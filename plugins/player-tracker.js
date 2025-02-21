@@ -3,6 +3,7 @@ import Sequelize from 'sequelize';
 import { stringify } from 'querystring';
 
 import DiscordBasePlugin from './discord-base-plugin.js';
+import { read } from 'fs';
 
 const { DataTypes, Op } = Sequelize;
 
@@ -153,6 +154,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
 
   async prepareToMount() {
     await super.prepareToMount();
+
     await this.models.Player.sync();
     await this.models.Playtime.sync();
   }
@@ -255,14 +257,14 @@ export default class PlayerTracker extends DiscordBasePlugin {
   }
 
   getTimeoutValue() {
-    var now = moment();
-    var messageTime = moment().startOf('isoWeek').add(12, 'h');
+    var now = moment.utc();
+    var messageTime = moment.utc().startOf('isoWeek').add(12, 'h');
     return messageTime.valueOf() - now.valueOf();
   }
 
   async sendStatistics() {
-    const dateFrom = moment().subtract(7, 'day').startOf('day');
-    const dateTill = moment().subtract(1, 'day').startOf('day');
+    const dateFrom = moment.utc().subtract(7, 'day').startOf('day');
+    const dateTill = moment.utc().subtract(1, 'day').startOf('day');
 
     const playtimes = await this.models.Player.findAll({
       raw: true,
@@ -282,7 +284,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
           }
         }
       },
-      group:['clanTag']
+      group: ['clanTag']
     });
 
     await this.sendDiscordMessage({
@@ -297,7 +299,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
           },
           {
             name: 'Till',
-            value: dateFrom.format('YYYY-MM-DD'),
+            value: dateTill.format('YYYY-MM-DD'),
             inline: true
           }
         ]
@@ -306,13 +308,16 @@ export default class PlayerTracker extends DiscordBasePlugin {
   }
 
   formatTable(data) {
-    let table = 'Clan       Seeded   Played\n';
+    let table = 'Clan       Seeded   Played   Ratio\n';
 
     data.forEach(item => {
-      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(item.totalMinutesSeeded ?? 0).padStart(6)}   ${String(item.totalMinutesPlayed ?? 0).padStart(6)}\n`;
+      const seeded = item.totalMinutesSeeded ?? 0;
+      const played = item.totalMinutesPlayed ?? 0;
+      const ratio = (played / seeded).toFixed(1);
+
+      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(seeded).padStart(6)}   ${String(played).padStart(6)}   ${String(ratio).padStart(5)}\n`;
     });
 
     return table;
   }
-
 }
