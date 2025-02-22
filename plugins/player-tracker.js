@@ -1,9 +1,7 @@
 import moment from 'moment';
 import Sequelize from 'sequelize';
 import { stringify } from 'querystring';
-
 import DiscordBasePlugin from './discord-base-plugin.js';
-import { read } from 'fs';
 
 const { DataTypes, Op } = Sequelize;
 
@@ -140,7 +138,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     });
 
     this.updatePlaytime = this.updatePlaytime.bind(this);
-    this.getTimeoutValue = this.getTimeoutValue.bind(this);
+    this.getMessageTimeoutValue = this.getMillisecondsToTheNextMondayNoon.bind(this);
     this.sendStatistics = this.sendStatistics.bind(this);
     this.formatTable = this.formatTable.bind(this);
   }
@@ -165,12 +163,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     // TODO clean up old entries
 
     this.interval = setInterval(this.updatePlaytime, 60_000);
-
-    const timeoutValue = this.getTimeoutValue();
-
-    if (timeoutValue >= 0) {
-      this.timeout = setTimeout(this.sendStatistics, timeoutValue);
-    }
+    this.timeout = setTimeout(this.sendStatistics, this.getMillisecondsToTheNextMondayNoon());
   }
 
   async unmount() {
@@ -210,7 +203,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
   }
 
   async updatePlaytime() {
-    const date = moment().startOf('day');
+    const date = moment.utc().startOf('day');
     const playerCount = this.server.playerCount;
 
     if (playerCount < this.options.seedingStartsAt) {
@@ -256,9 +249,13 @@ export default class PlayerTracker extends DiscordBasePlugin {
     }
   }
 
-  getTimeoutValue() {
+  /**
+   * Calculates milliseconds to the next Monday noon.
+   * @returns {number} milliseconds to the next Monday noon
+   */
+  getMillisecondsToTheNextMondayNoon() {
     var now = moment.utc();
-    var messageTime = moment.utc().startOf('isoWeek').add(12, 'h');
+    var messageTime = moment.utc().subtract(12, 'h').add(7, 'day').startOf('isoWeek').add(12, 'h');
     return messageTime.valueOf() - now.valueOf();
   }
 
@@ -307,15 +304,25 @@ export default class PlayerTracker extends DiscordBasePlugin {
     });
   }
 
+  /**
+   * @param {any[]} data
+   */
   formatTable(data) {
-    let table = 'Clan       Seeded   Played   Ratio\n';
+    let table = 'Clan       Played   Seeded   Ratio\n----------------------------------\n';
 
     data.forEach(item => {
       const seeded = item.totalMinutesSeeded ?? 0;
       const played = item.totalMinutesPlayed ?? 0;
-      const ratio = (played / seeded).toFixed(1);
+      const ratio = played / seeded;
 
-      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(seeded).padStart(6)}   ${String(played).padStart(6)}   ${String(ratio).padStart(5)}\n`;
+      let ratioString = ratio.toFixed(1);
+      if (ratio >= 1000) {
+        ratioString = '999.9';
+      } else if (isNaN(ratio)) {
+        ratioString = '-';
+      }
+
+      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(played).padStart(6)}   ${String(seeded).padStart(6)}   ${String(ratioString).padStart(5)}\n`;
     });
 
     return table;

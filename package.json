@@ -16,7 +16,7 @@
     "globals": "^15.14.0",
     "msw": "^2.7.1",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.6"
   },
   "peerDependencies": {
     "chalk": "^4.1.2",
