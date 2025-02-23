@@ -138,9 +138,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     });
 
     this.updatePlaytime = this.updatePlaytime.bind(this);
-    this.getMessageTimeoutValue = this.getMillisecondsToTheNextMondayNoon.bind(this);
     this.sendStatistics = this.sendStatistics.bind(this);
-    this.formatTable = this.formatTable.bind(this);
   }
 
   createModel(name, schema, options) {
@@ -249,13 +247,9 @@ export default class PlayerTracker extends DiscordBasePlugin {
     }
   }
 
-  /**
-   * Calculates milliseconds to the next Monday noon.
-   * @returns {number} milliseconds to the next Monday noon
-   */
   getMillisecondsToTheNextMondayNoon() {
-    var now = moment.utc();
-    var messageTime = moment.utc().subtract(12, 'h').add(7, 'day').startOf('isoWeek').add(12, 'h');
+    const now = moment.utc();
+    const messageTime = moment.utc().subtract(12, 'h').add(7, 'day').startOf('isoWeek').add(12, 'h');
     return messageTime.valueOf() - now.valueOf();
   }
 
