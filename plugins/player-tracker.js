@@ -317,6 +317,14 @@ export default class PlayerTracker extends DiscordBasePlugin {
       group: ['clanTag']
     });
 
+    const curentClans = [...new Set(Object.values(this.whitelistClansBySteamId))];
+
+    curentClans.forEach(clanTag => {
+      if (!playtimes.some(playtime => playtime.clanTag === clanTag)) {
+        playtimes.push({ clanTag });
+      }
+    });
+
     await this.sendDiscordMessage({
       embed: {
         title: 'Clan statistics (in minutes)',
@@ -341,6 +349,8 @@ export default class PlayerTracker extends DiscordBasePlugin {
    * @param {any[]} data
    */
   formatTable(data) {
+    data.sort((a, b) => a.clanTag.localeCompare(b.clanTag));
+
     let table = 'Clan       Played   Seeded   Ratio\n----------------------------------\n';
 
     data.forEach(item => {
