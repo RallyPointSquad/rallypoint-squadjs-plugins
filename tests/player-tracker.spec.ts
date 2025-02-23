@@ -277,7 +277,9 @@ A               6       12     0.5
         return HttpResponse.json([
           { _id: 101, tag: 'ClanWithMultiplePlayers' },
           { _id: 102, tag: 'ClanWithSinglePlayers' },
-          { _id: 103, tag: 'ClanWithoutPlayers' }
+          { _id: 103, tag: 'ClanWithPlayerThatsAlsoInAnotherClan#1' },
+          { _id: 104, tag: 'ClanWithPlayerThatsAlsoInAnotherClan#2' },
+          { _id: 105, tag: 'ClanWithoutPlayers' }
         ]);
       }, {
         once: true,
@@ -287,6 +289,8 @@ A               6       12     0.5
           { id_clan: 101, steamid64: 'A' },
           { id_clan: 101, steamid64: 'B' },
           { id_clan: 102, steamid64: 'C' },
+          { id_clan: 103, steamid64: 'D' },
+          { id_clan: 104, steamid64: 'D' },
           { id_clan: 999, steamid64: 'X' },
         ]);
       }, {
@@ -296,10 +300,11 @@ A               6       12     0.5
 
     await plugin.mount();
 
-    expect(plugin.whitelistClansBySteamId).toEqual({
+    expect(plugin.whitelistClansBySteamId).toStrictEqual({
       A: 'ClanWithMultiplePlayers',
       B: 'ClanWithMultiplePlayers',
       C: 'ClanWithSinglePlayers',
+      D: 'ClanWithPlayerThatsAlsoInAnotherClan#2',
     });
   });
 });

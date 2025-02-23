@@ -249,7 +249,12 @@ export default class PlayerTracker extends DiscordBasePlugin {
     const players = await playersResponse.json();
 
     this.whitelistClansBySteamId = players.reduce((acc, player) => {
-      acc[player.steamid64] = clantagsById[player.id_clan];
+      const clanTag = clantagsById[player.id_clan];
+
+      if (clanTag) {
+        acc[player.steamid64] = clanTag;
+      }
+
       return acc;
     }, {});
   }
