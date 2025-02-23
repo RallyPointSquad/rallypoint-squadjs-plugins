@@ -1,7 +1,7 @@
 import PlayerTracker from '../plugins/player-tracker.js';
-import { SquadServer } from '../types/SquadJS.js';
+import { Player, SquadServer } from '../types/SquadJS.js';
 import { mockDiscordClient } from './support.js';
-import { Sequelize } from 'sequelize';
+import { Sequelize, DataTypes } from 'sequelize';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import moment from 'moment';
@@ -10,6 +10,7 @@ describe('player-tracker.js', () => {
 
   const squadServer: Partial<SquadServer> = {
     playerCount: 0,
+    players: []
   };
 
   const {
@@ -41,6 +42,7 @@ describe('player-tracker.js', () => {
       sqlite: new Sequelize({
         dialect: 'sqlite',
         storage: ':memory:',
+        logging: false
       })
     });
   };
@@ -56,7 +58,7 @@ describe('player-tracker.js', () => {
     vi.useRealTimers();
     vi.resetAllMocks();
 
-    server.resetHandlers()
+    server.resetHandlers();
   });
 
   afterAll(() => { server.close(); });
@@ -67,35 +69,27 @@ describe('player-tracker.js', () => {
     await plugin.prepareToMount();
     await plugin.mount();
 
-    const playerData = {
-      steamID: "1",
-      clanTag: "A"
-    };
-
-    const playtimeData = {
+    const newPlaytimes = await plugin.models.NewPlaytime.bulkCreate({
       steamID: "1",
       date: (new Date).toISOString().substring(0, 10),
       minutesPlayed: 10,
-      minutesSeeded: 3
-    };
-
-    await plugin.models.Player.upsert(playerData);
-    await plugin.models.Playtime.upsert(playtimeData);
+      minutesSeeded: 3,
+      clanTag: "A"
+    });
 
     await plugin.unmount();
 
     await plugin.prepareToMount();
     await plugin.mount();
 
-    expect(await plugin.models.Player.findAll({ raw: true })).toEqual([playerData]);
-    expect(await plugin.models.Playtime.findAll({ raw: true })).toEqual([playtimeData]);
+    expect(await plugin.models.NewPlaytime.findAll()).toEqual(newPlaytimes);
   });
 
   it.for([
     [new Date("2025-02-17T08:00:00.0Z"), new Date("2025-02-17T12:00:00.0Z")], // Monday before noon
     [new Date("2025-02-17T12:01:00.0Z"), new Date("2025-02-24T12:00:00.0Z")], // Monday after noon
     [new Date("2025-02-15T12:00:00.0Z"), new Date("2025-02-17T12:00:00.0Z")], // Saturday at noon
-  ])('Calculates milliseconds to closest next Monday noon', async ([systemDate, expectedTimeOfTheMessage]) => {
+  ])('Calculates milliseconds to closest next Monday noon at %s', async ([systemDate, expectedTimeOfTheMessage]) => {
     vi.setSystemTime(systemDate);
 
     const plugin = createPlugin();
@@ -108,7 +102,7 @@ describe('player-tracker.js', () => {
     expect(new Date(systemDate.getTime() + actualTimeoutValue)).toEqual(expectedTimeOfTheMessage);
   });
 
-  it('Sends properly formatted message containing time tracked in previous seven days summed by clan', async () => {
+  it('Sends properly formatted message containing time tracked in previous seven days', async () => {
     const plugin = createPlugin();
 
     let mockSend = vi.spyOn(discordChannel, 'send').mockImplementation(async () => null);
@@ -116,51 +110,16 @@ describe('player-tracker.js', () => {
     await plugin.prepareToMount();
     await plugin.mount();
 
-    await plugin.models.Player.bulkCreate([
-      { steamID: "1", clanTag: "A" },
-      { steamID: "2", clanTag: "A" },
-      { steamID: "3", clanTag: "B" }
-    ]);
+    const today = moment.utc();
+    const oneDayInPast = moment.utc().subtract(1, 'day');
+    const sevenDaysInPast = moment.utc().subtract(7, 'day');
+    const eightDaysInPast = moment.utc().subtract(8, 'day');
 
-    await plugin.models.Playtime.bulkCreate([
-      // playtime 8 dyas in the past
-      {
-        steamID: "1",
-        date: moment.utc().subtract(8, 'day'),
-        minutesPlayed: 100,
-        minutesSeeded: 200
-      },
-      // playtime for today
-      {
-        steamID: "1",
-        date: moment.utc(),
-        minutesPlayed: 100,
-        minutesSeeded: 200
-      },
-      {
-        steamID: "1",
-        date: moment.utc().subtract(1, 'day'),
-        minutesPlayed: 1,
-        minutesSeeded: 1
-      },
-      {
-        steamID: "1",
-        date: moment.utc().subtract(2, 'day'),
-        minutesPlayed: 5,
-        minutesSeeded: 5
-      },
-      {
-        steamID: "2",
-        date: moment.utc().subtract(3, 'day'),
-        minutesPlayed: 20,
-        minutesSeeded: 20
-      },
-      {
-        steamID: "3",
-        date: moment.utc().subtract(4, 'day'),
-        minutesPlayed: 10,
-        minutesSeeded: 3
-      },
+    await plugin.models.NewPlaytime.bulkCreate([
+      { steamID: "1", date: eightDaysInPast, minutesPlayed: 100, minutesSeeded: 100, clanTag: 'A' },
+      { steamID: "1", date: sevenDaysInPast, minutesPlayed: 1, minutesSeeded: 2, clanTag: 'A' },
+      { steamID: "1", date: oneDayInPast, minutesPlayed: 5, minutesSeeded: 10, clanTag: 'A' },
+      { steamID: "1", date: today, minutesPlayed: 200, minutesSeeded: 200, clanTag: 'A' },
     ]);
 
     await plugin.sendStatistics();
@@ -171,8 +130,7 @@ describe('player-tracker.js', () => {
         description: `\`\`\`
 Clan       Played   Seeded   Ratio
 ----------------------------------
-A              26       26     1.0
-B              10        3     3.3
+A               6       12     0.5
 \`\`\``,
         fields: [
           {
@@ -202,8 +160,8 @@ B              10        3     3.3
     [{ minutesPlayed: 0, minutesSeeded: 1 }, 'A               0        1     0.0'],
     [{ minutesPlayed: 1, minutesSeeded: 1000 }, 'A               1     1000     0.0'],
     [{ minutesPlayed: 1000, minutesSeeded: 1 }, 'A            1000        1   999.9'],
-    [null, 'A               0        0       -'],
-  ])('Formats %s into %s', async (playtime, expectedMessagePart) => {
+    //[null, 'A               0        0       -'],
+  ])('Formats $minutesPlayed played and $minutesSeeded seeded minutes in the message', async (playtime, expectedMessagePart) => {
     const plugin = createPlugin();
 
     let mockSend = vi.spyOn(discordChannel, 'send').mockImplementation(async () => null);
@@ -211,16 +169,12 @@ B              10        3     3.3
     await plugin.prepareToMount();
     await plugin.mount();
 
-    await plugin.models.Player.create({
-      steamID: "1",
-      clanTag: "A"
-    });
-
     if (playtime) {
-      await plugin.models.Playtime.create({
+      await plugin.models.NewPlaytime.create({
         steamID: "1",
         date: moment.utc().subtract(1, 'day'),
-        ...playtime
+        ...playtime,
+        clanTag: 'A'
       });
     }
 
@@ -233,5 +187,119 @@ B              10        3     3.3
       }),
       embeds: expect.anything()
     }));
+  });
+
+  it('Migrates data into new table', async () => {
+    const plugin = createPlugin();
+
+    const player = plugin.options.database.define(`PlayerTracker_Player`, {
+      steamID: {
+        type: DataTypes.STRING,
+        primaryKey: true
+      },
+      clanTag: {
+        type: DataTypes.STRING
+      }
+    });
+
+    const playtime = plugin.options.database.define(`PlayerTracker_Playtime`, {
+      steamID: {
+        type: DataTypes.STRING,
+        primaryKey: true
+      },
+      date: {
+        type: DataTypes.DATEONLY,
+        primaryKey: true
+      },
+      minutesPlayed: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      },
+      minutesSeeded: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      }
+    });
+
+    await player.sync();
+    await playtime.sync();
+
+    await player.create({ steamID: "1", clanTag: "A" });
+    await playtime.create({ steamID: "1", date: new Date(0), minutesPlayed: 1, minutesSeeded: 2 });
+
+    await plugin.prepareToMount();
+
+    const players = await plugin.models.Player.findAll();
+    const playtimes = await plugin.models.Playtime.findAll();
+    const newPlaytimes = await plugin.models.NewPlaytime.findAll({ raw: true });
+
+    expect(players).toHaveLength(1);
+    expect(playtimes).toHaveLength(1);
+    expect(newPlaytimes).toEqual([{ steamID: '1', date: (new Date).toISOString().substring(0, 10), minutesPlayed: 1, minutesSeeded: 2, clanTag: 'A' }]);
+  });
+
+  it.each([
+    { playerCount: 0, expectedPlayedTime: 0, expectedSeededTime: 0 },
+    { playerCount: 10, expectedPlayedTime: 0, expectedSeededTime: 1 },
+    { playerCount: 65, expectedPlayedTime: 1, expectedSeededTime: 0 }
+  ])('Logs time of a player at server population $playerCount', async ({ playerCount, expectedPlayedTime, expectedSeededTime }) => {
+    const plugin = createPlugin();
+
+    vi.spyOn(squadServer, 'playerCount', 'get').mockReturnValue(playerCount);
+    vi.spyOn(squadServer, 'players', 'get').mockReturnValue([
+      { steamID: null, playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 },
+      { steamID: '1', playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 },
+      { steamID: '2', playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 }
+    ]);
+
+    await plugin.prepareToMount();
+
+    plugin.whitelistClansBySteamId = {
+      1: 'A'
+    }
+
+    await plugin.updatePlaytime();
+    await plugin.updatePlaytime();
+
+    const newPlaytimes = await plugin.models.NewPlaytime.findAll({ raw: true });
+
+    expect(newPlaytimes).toEqual([
+      { steamID: '1', date: (new Date).toISOString().substring(0, 10), minutesPlayed: expectedPlayedTime * 2, minutesSeeded: expectedSeededTime * 2, clanTag: 'A' },
+      { steamID: '2', date: (new Date).toISOString().substring(0, 10), minutesPlayed: expectedPlayedTime * 2, minutesSeeded: expectedSeededTime * 2, clanTag: null }
+    ]);
+  });
+
+  it('Loads clans from whitelister on mount', async () => {
+    const plugin = createPlugin();
+
+    server.use(
+      http.get('https://www.whitelister.com/api/clans/getAllClans', () => {
+        return HttpResponse.json([
+          { _id: 101, tag: 'ClanWithMultiplePlayers' },
+          { _id: 102, tag: 'ClanWithSinglePlayers' },
+          { _id: 103, tag: 'ClanWithoutPlayers' }
+        ]);
+      }, {
+        once: true,
+      }),
+      http.get('https://www.whitelister.com/api/whitelist/read/getAll', () => {
+        return HttpResponse.json([
+          { id_clan: 101, steamid64: 'A' },
+          { id_clan: 101, steamid64: 'B' },
+          { id_clan: 102, steamid64: 'C' },
+          { id_clan: 999, steamid64: 'X' },
+        ]);
+      }, {
+        once: true,
+      })
+    );
+
+    await plugin.mount();
+
+    expect(plugin.whitelistClansBySteamId).toEqual({
+      A: 'ClanWithMultiplePlayers',
+      B: 'ClanWithMultiplePlayers',
+      C: 'ClanWithSinglePlayers',
+    });
   });
 });

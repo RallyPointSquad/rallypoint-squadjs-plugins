@@ -79,6 +79,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
   constructor(server, options, connectors) {
     super(server, options, connectors);
 
+    this.whitelistClansBySteamId = {};
     this.models = {};
 
     this.createModel(
@@ -124,6 +125,35 @@ export default class PlayerTracker extends DiscordBasePlugin {
       }
     );
 
+    this.createModel(
+      'NewPlaytime',
+      {
+        steamID: {
+          type: DataTypes.STRING,
+          primaryKey: true
+        },
+        date: {
+          type: DataTypes.DATEONLY,
+          primaryKey: true
+        },
+        minutesPlayed: {
+          type: DataTypes.INTEGER,
+          defaultValue: 0
+        },
+        minutesSeeded: {
+          type: DataTypes.INTEGER,
+          defaultValue: 0
+        },
+        clanTag: {
+          type: DataTypes.STRING
+        }
+      },
+      {
+        charset: 'utf8mb4',
+        collate: 'utf8mb4_unicode_ci'
+      }
+    );
+
     this.models.Player.hasMany(this.models.Playtime, {
       as: 'Playtimes',
       sourceKey: 'steamID',
@@ -153,10 +183,40 @@ export default class PlayerTracker extends DiscordBasePlugin {
 
     await this.models.Player.sync();
     await this.models.Playtime.sync();
+    await this.models.NewPlaytime.sync();
+
+    await this.migrate();
+  }
+
+  async migrate() {
+    const existingNewPlaytimes = await this.models.NewPlaytime.findAll();
+
+    if (existingNewPlaytimes.lenght > 0) {
+      return;
+    }
+
+    const originalPlaytimes = await this.models.Playtime.findAll({
+      include: {
+        model: this.models.Player,
+        as: 'Player'
+      }
+    });
+
+    const newPlaytimes = originalPlaytimes.map((playtime) => {
+      return {
+        steamID: playtime.steamID,
+        date: playtime.date,
+        minutesPlayed: playtime.minutesPlayed,
+        minutesSeeded: playtime.minutesSeeded,
+        clanTag: playtime.Player.clanTag
+      }
+    });
+
+    await this.models.NewPlaytime.bulkCreate(newPlaytimes);
   }
 
   async mount() {
-    await this.syncWhitelister();
+    await this.loadWhitelisterClans();
 
     // TODO clean up old entries
 
@@ -169,7 +229,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     clearTimeout(this.timeout);
   }
 
-  async syncWhitelister() {
+  async loadWhitelisterClans() {
     const clansResponse = await fetch(`${this.options.whitelisterApiUrl}/api/clans/getAllClans?${stringify({
       apiKey: this.options.whitelisterApiKey
     })}`);
@@ -188,62 +248,42 @@ export default class PlayerTracker extends DiscordBasePlugin {
 
     const players = await playersResponse.json();
 
-    for (let index in players) {
-      const player = players[index];
-
-      if (clantagsById[player.id_clan]) {
-        await this.models.Player.upsert({
-          steamID: player.steamid64,
-          clanTag: clantagsById[player.id_clan]
-        });
-      }
-    }
+    this.whitelistClansBySteamId = players.reduce((acc, player) => {
+      acc[player.steamid64] = clantagsById[player.id_clan];
+      return acc;
+    }, {});
   }
 
   async updatePlaytime() {
     const date = moment.utc().startOf('day');
     const playerCount = this.server.playerCount;
 
-    if (playerCount < this.options.seedingStartsAt) {
-      return;
-    }
+    for (let index in this.server.players) {
+      const steamId = this.server.players[index].steamID;
 
-    const connectedSteamIds = this.server.players.map(player => player.steamID);
-
-    const trackedAndConnectedPlayers = await this.models.Player.findAll({
-      where: {
-        steamID: {
-          [Op.in]: connectedSteamIds
-        }
-      },
-      include: {
-        model: this.models.Playtime,
-        as: 'Playtimes',
-        required: false,
-        where: {
-          date: date
-        }
-      },
-    });
-
-    for (let index in trackedAndConnectedPlayers) {
-      let trackedAndConnectedPlayer = trackedAndConnectedPlayers[index];
-
-      let minutesPlayed = trackedAndConnectedPlayer.Playtimes?.[0]?.minutesPlayed ?? 0;
-      let minutesSeeded = trackedAndConnectedPlayer.Playtimes?.[0]?.minutesSeeded ?? 0;
-
-      if (playerCount > this.options.seedingEndsAt) {
-        minutesPlayed++;
-      } else {
-        minutesSeeded++;
+      if (!steamId) {
+        continue;
       }
 
-      await this.models.Playtime.upsert({
-        steamID: trackedAndConnectedPlayer.steamID,
-        date: date,
-        minutesPlayed: minutesPlayed,
-        minutesSeeded: minutesSeeded
+      const [playtime] = await this.models.NewPlaytime.findOrCreate({
+        where: {
+          date: date,
+          steamID: steamId
+        },
+        defaults: {
+          minutesPlayed: 0,
+          minutesSeeded: 0,
+          clanTag: this.whitelistClansBySteamId[steamId]
+        }
       });
+
+      if (playerCount < this.options.seedingStartsAt) {
+        continue;
+      } else if (playerCount > this.options.seedingEndsAt) {
+        await playtime.increment('minutesPlayed');
+      } else {
+        await playtime.increment('minutesSeeded');
+      }
     }
   }
 
@@ -257,22 +297,16 @@ export default class PlayerTracker extends DiscordBasePlugin {
     const dateFrom = moment.utc().subtract(7, 'day').startOf('day');
     const dateTill = moment.utc().subtract(1, 'day').startOf('day');
 
-    const playtimes = await this.models.Player.findAll({
+    const playtimes = await this.models.NewPlaytime.findAll({
       raw: true,
       attributes: [
         'clanTag',
         [Sequelize.fn('SUM', Sequelize.col('minutesSeeded')), 'totalMinutesSeeded'],
         [Sequelize.fn('SUM', Sequelize.col('minutesPlayed')), 'totalMinutesPlayed'],
       ],
-      include: {
-        model: this.models.Playtime,
-        as: 'Playtimes',
-        required: false,
-        attributes: [],
-        where: {
-          date: {
-            [Op.between]: [dateFrom, dateTill]
-          }
+      where: {
+        date: {
+          [Op.between]: [dateFrom, dateTill]
         }
       },
       group: ['clanTag']
