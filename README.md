@@ -2,9 +2,12 @@
 
 Here you will find different custom plugins for [SquadJS](https://github.com/Team-Silver-Sphere/SquadJS).
 
-## Seeding Map Setter
 
-This plugin is intended to bring more variety into the seeding layers and layers that are played after seeding
+## Available Plugins
+
+### Seeding Map Setter
+
+This plugin is intended to bring more variety into the seeding layers and layers that are played when the seeding
 ends. Once SquadJS starts and loads the plugin, it will attempt to set the current layer to one randomly chosen
 from configured options. It will also attempt to set the next layer in the same way.
 
@@ -27,7 +30,8 @@ Example configuration:
 }
 ```
 
-## Discord Seed Call
+
+### Discord Seed Call
 
 This plugin is intended to publish discord announcement message at specified time of the day.
 
@@ -45,9 +49,11 @@ Example configuration:
 }
 ```
 
-## Player Tracker
 
-This plugin tracks the number of minutes players spend on the server. Only the members of clans as defined in the whitelister are taken into account. The plugin uses server population to differentiate between seeding and normal play. Statistics with the cumulative time per clan are sent every Monday in Discord.
+### Player Tracker
+
+This plugin tracks the number of minutes players spend on the server. The plugin uses server population to
+differentiate between seeding and normal play. Statistics with the cumulative time per clan are sent every Monday in Discord.
 
 Example configuration:
 
@@ -61,5 +67,30 @@ Example configuration:
     "whitelisterApiUrl": "https://www.whitelister.com",
     "whitelisterApiKey": "tqvUguPec0NzXP3vo3zV9RfCXMZFMpEnu7snBqWm4ckSUltqxSKa6tyEO",
     "whitelisterApiPlayerListId": "7e4bebc07fc41"
+}
+```
+
+
+### Task Scheduler
+
+Generic task scheduler plugin that emits configured events to other plugins based on CRON expressions.
+The plugin itself does not offer any functionality other than scheduling events.
+
+Plugin dependencies:
+
+* [node-cron](https://www.npmjs.com/package/node-cron) library (add it to package.json's `"dependencies"`)
+
+Example configuration:
+
+```json
+{
+    "plugin": "TaskScheduler",
+    "tasks": [
+        {
+            "name": "Emit custom event every hour",
+            "cron": "0 * * * *",
+            "event": "MY_CUSTOM_EVENT",
+        }
+    ]
 }
 ```
