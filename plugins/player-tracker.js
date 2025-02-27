@@ -83,49 +83,6 @@ export default class PlayerTracker extends DiscordBasePlugin {
     this.models = {};
 
     this.createModel(
-      'Player',
-      {
-        steamID: {
-          type: DataTypes.STRING,
-          primaryKey: true
-        },
-        clanTag: {
-          type: DataTypes.STRING
-        }
-      },
-      {
-        charset: 'utf8mb4',
-        collate: 'utf8mb4_unicode_ci'
-      }
-    );
-
-    this.createModel(
-      'Playtime',
-      {
-        steamID: {
-          type: DataTypes.STRING,
-          primaryKey: true
-        },
-        date: {
-          type: DataTypes.DATEONLY,
-          primaryKey: true
-        },
-        minutesPlayed: {
-          type: DataTypes.INTEGER,
-          defaultValue: 0
-        },
-        minutesSeeded: {
-          type: DataTypes.INTEGER,
-          defaultValue: 0
-        }
-      },
-      {
-        charset: 'utf8mb4',
-        collate: 'utf8mb4_unicode_ci'
-      }
-    );
-
-    this.createModel(
       'NewPlaytime',
       {
         steamID: {
@@ -154,19 +111,6 @@ export default class PlayerTracker extends DiscordBasePlugin {
       }
     );
 
-    this.models.Player.hasMany(this.models.Playtime, {
-      as: 'Playtimes',
-      sourceKey: 'steamID',
-      foreignKey: { name: 'steamID', allowNull: false },
-      onDelete: 'CASCADE'
-    });
-
-    this.models.Playtime.belongsTo(this.models.Player, {
-      as: 'Player',
-      sourceKey: 'steamID',
-      foreignKey: { name: 'steamID', allowNull: false }
-    });
-
     this.updatePlaytime = this.updatePlaytime.bind(this);
     this.sendStatistics = this.sendStatistics.bind(this);
   }
@@ -181,44 +125,11 @@ export default class PlayerTracker extends DiscordBasePlugin {
   async prepareToMount() {
     await super.prepareToMount();
 
-    await this.models.Player.sync();
-    await this.models.Playtime.sync();
     await this.models.NewPlaytime.sync();
-
-    await this.migrate();
-  }
-
-  async migrate() {
-    const existingNewPlaytimes = await this.models.NewPlaytime.findAll();
-
-    if (existingNewPlaytimes.lenght > 0) {
-      return;
-    }
-
-    const originalPlaytimes = await this.models.Playtime.findAll({
-      include: {
-        model: this.models.Player,
-        as: 'Player'
-      }
-    });
-
-    const newPlaytimes = originalPlaytimes.map((playtime) => {
-      return {
-        steamID: playtime.steamID,
-        date: playtime.date,
-        minutesPlayed: playtime.minutesPlayed,
-        minutesSeeded: playtime.minutesSeeded,
-        clanTag: playtime.Player.clanTag
-      }
-    });
-
-    await this.models.NewPlaytime.bulkCreate(newPlaytimes);
   }
 
   async mount() {
     await this.loadWhitelisterClans();
-
-    // TODO clean up old entries
 
     this.interval = setInterval(this.updatePlaytime, 60_000);
     this.timeout = setTimeout(this.sendStatistics, this.getMillisecondsToTheNextMondayNoon());
@@ -264,7 +175,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     const playerCount = this.server.playerCount;
 
     for (let index in this.server.players) {
-      const steamId = this.server.players[index].steamID;
+      const steamId = this.server.players[index]?.steamID;
 
       if (!steamId) {
         continue;

@@ -198,55 +198,6 @@ D               1        1     1.0
     }));
   });
 
-  it('Migrates data into new table', async () => {
-    const plugin = createPlugin();
-
-    const player = plugin.options.database.define(`PlayerTracker_Player`, {
-      steamID: {
-        type: DataTypes.STRING,
-        primaryKey: true
-      },
-      clanTag: {
-        type: DataTypes.STRING
-      }
-    });
-
-    const playtime = plugin.options.database.define(`PlayerTracker_Playtime`, {
-      steamID: {
-        type: DataTypes.STRING,
-        primaryKey: true
-      },
-      date: {
-        type: DataTypes.DATEONLY,
-        primaryKey: true
-      },
-      minutesPlayed: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0
-      },
-      minutesSeeded: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0
-      }
-    });
-
-    await player.sync();
-    await playtime.sync();
-
-    await player.create({ steamID: "1", clanTag: "A" });
-    await playtime.create({ steamID: "1", date: new Date(0), minutesPlayed: 1, minutesSeeded: 2 });
-
-    await plugin.prepareToMount();
-
-    const players = await plugin.models.Player.findAll();
-    const playtimes = await plugin.models.Playtime.findAll();
-    const newPlaytimes = await plugin.models.NewPlaytime.findAll({ raw: true });
-
-    expect(players).toHaveLength(1);
-    expect(playtimes).toHaveLength(1);
-    expect(newPlaytimes).toEqual([{ steamID: '1', date: (new Date).toISOString().substring(0, 10), minutesPlayed: 1, minutesSeeded: 2, clanTag: 'A' }]);
-  });
-
   it.each([
     { playerCount: 0, expectedPlayedTime: 0, expectedSeededTime: 0 },
     { playerCount: 10, expectedPlayedTime: 0, expectedSeededTime: 1 },
@@ -256,6 +207,7 @@ D               1        1     1.0
 
     vi.spyOn(squadServer, 'playerCount', 'get').mockReturnValue(playerCount);
     vi.spyOn(squadServer, 'players', 'get').mockReturnValue([
+      undefined, // I guess this can happen, not sure how or why
       { steamID: null, playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 },
       { steamID: '1', playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 },
       { steamID: '2', playerID: 0, name: '', isLeader: false, teamID: 0, squadID: 0 }
