@@ -44,3 +44,22 @@ Example configuration:
     "pingGroups": ["500455137626554379"]
 }
 ```
+
+## Player Tracker
+
+This plugin tracks the number of minutes players spend on the server. Only the members of clans as defined in the whitelister are taken into account. The plugin uses server population to differentiate between seeding and normal play. Statistics with the cumulative time per clan are sent every Monday in Discord.
+
+Example configuration:
+
+```json
+{
+    "plugin": "PlayerTracker",
+    "enabled": true,
+    "discordClient": "discord",
+    "channelID": "1340314500031450080",
+    "database": "sqlite",
+    "whitelisterApiUrl": "https://www.whitelister.com",
+    "whitelisterApiKey": "tqvUguPec0NzXP3vo3zV9RfCXMZFMpEnu7snBqWm4ckSUltqxSKa6tyEO",
+    "whitelisterApiPlayerListId": "7e4bebc07fc41"
+}
+```

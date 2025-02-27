@@ -1,7 +1,6 @@
 import moment from 'moment';
 import Sequelize from 'sequelize';
 import { stringify } from 'querystring';
-
 import DiscordBasePlugin from './discord-base-plugin.js';
 
 const { DataTypes, Op } = Sequelize;
@@ -80,27 +79,11 @@ export default class PlayerTracker extends DiscordBasePlugin {
   constructor(server, options, connectors) {
     super(server, options, connectors);
 
+    this.whitelistClansBySteamId = {};
     this.models = {};
 
     this.createModel(
-      'Player',
-      {
-        steamID: {
-          type: DataTypes.STRING,
-          primaryKey: true
-        },
-        clanTag: {
-          type: DataTypes.STRING
-        }
-      },
-      {
-        charset: 'utf8mb4',
-        collate: 'utf8mb4_unicode_ci'
-      }
-    );
-
-    this.createModel(
-      'Playtime',
+      'NewPlaytime',
       {
         steamID: {
           type: DataTypes.STRING,
@@ -117,6 +100,9 @@ export default class PlayerTracker extends DiscordBasePlugin {
         minutesSeeded: {
           type: DataTypes.INTEGER,
           defaultValue: 0
+        },
+        clanTag: {
+          type: DataTypes.STRING
         }
       },
       {
@@ -125,23 +111,8 @@ export default class PlayerTracker extends DiscordBasePlugin {
       }
     );
 
-    this.models.Player.hasMany(this.models.Playtime, {
-      as: 'Playtimes',
-      sourceKey: 'steamID',
-      foreignKey: { name: 'steamID', allowNull: false },
-      onDelete: 'CASCADE'
-    });
-
-    this.models.Playtime.belongsTo(this.models.Player, {
-      as: 'Player',
-      sourceKey: 'steamID',
-      foreignKey: { name: 'steamID', allowNull: false }
-    });
-
     this.updatePlaytime = this.updatePlaytime.bind(this);
-    this.getTimeoutValue = this.getTimeoutValue.bind(this);
     this.sendStatistics = this.sendStatistics.bind(this);
-    this.formatTable = this.formatTable.bind(this);
   }
 
   createModel(name, schema, options) {
@@ -153,22 +124,15 @@ export default class PlayerTracker extends DiscordBasePlugin {
 
   async prepareToMount() {
     await super.prepareToMount();
-    await this.models.Player.sync();
-    await this.models.Playtime.sync();
+
+    await this.models.NewPlaytime.sync();
   }
 
   async mount() {
-    await this.syncWhitelister();
-
-    // TODO clean up old entries
+    await this.loadWhitelisterClans();
 
     this.interval = setInterval(this.updatePlaytime, 60_000);
-
-    const timeoutValue = this.getTimeoutValue();
-
-    if (timeoutValue >= 0) {
-      this.timeout = setTimeout(this.sendStatistics, timeoutValue);
-    }
+    this.timeout = setTimeout(this.sendStatistics, this.getMillisecondsToTheNextMondayNoon());
   }
 
   async unmount() {
@@ -176,7 +140,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     clearTimeout(this.timeout);
   }
 
-  async syncWhitelister() {
+  async loadWhitelisterClans() {
     const clansResponse = await fetch(`${this.options.whitelisterApiUrl}/api/clans/getAllClans?${stringify({
       apiKey: this.options.whitelisterApiKey
     })}`);
@@ -195,94 +159,81 @@ export default class PlayerTracker extends DiscordBasePlugin {
 
     const players = await playersResponse.json();
 
-    for (let index in players) {
-      const player = players[index];
+    this.whitelistClansBySteamId = players.reduce((acc, player) => {
+      const clanTag = clantagsById[player.id_clan];
 
-      if (clantagsById[player.id_clan]) {
-        await this.models.Player.upsert({
-          steamID: player.steamid64,
-          clanTag: clantagsById[player.id_clan]
-        });
+      if (clanTag) {
+        acc[player.steamid64] = clanTag;
       }
-    }
+
+      return acc;
+    }, {});
   }
 
   async updatePlaytime() {
-    const date = moment().startOf('day');
+    const date = moment.utc().startOf('day');
     const playerCount = this.server.playerCount;
 
-    if (playerCount < this.options.seedingStartsAt) {
-      return;
-    }
+    for (let index in this.server.players) {
+      const steamId = this.server.players[index]?.steamID;
 
-    const connectedSteamIds = this.server.players.map(player => player.steamID);
-
-    const trackedAndConnectedPlayers = await this.models.Player.findAll({
-      where: {
-        steamID: {
-          [Op.in]: connectedSteamIds
-        }
-      },
-      include: {
-        model: this.models.Playtime,
-        as: 'Playtimes',
-        required: false,
-        where: {
-          date: date
-        }
-      },
-    });
-
-    for (let index in trackedAndConnectedPlayers) {
-      let trackedAndConnectedPlayer = trackedAndConnectedPlayers[index];
-
-      let minutesPlayed = trackedAndConnectedPlayer.Playtimes?.[0]?.minutesPlayed ?? 0;
-      let minutesSeeded = trackedAndConnectedPlayer.Playtimes?.[0]?.minutesSeeded ?? 0;
-
-      if (playerCount > this.options.seedingEndsAt) {
-        minutesPlayed++;
-      } else {
-        minutesSeeded++;
+      if (!steamId) {
+        continue;
       }
 
-      await this.models.Playtime.upsert({
-        steamID: trackedAndConnectedPlayer.steamID,
-        date: date,
-        minutesPlayed: minutesPlayed,
-        minutesSeeded: minutesSeeded
+      const [playtime] = await this.models.NewPlaytime.findOrCreate({
+        where: {
+          date: date,
+          steamID: steamId
+        },
+        defaults: {
+          minutesPlayed: 0,
+          minutesSeeded: 0,
+          clanTag: this.whitelistClansBySteamId[steamId]
+        }
       });
+
+      if (playerCount < this.options.seedingStartsAt) {
+        continue;
+      } else if (playerCount > this.options.seedingEndsAt) {
+        await playtime.increment('minutesPlayed');
+      } else {
+        await playtime.increment('minutesSeeded');
+      }
     }
   }
 
-  getTimeoutValue() {
-    var now = moment();
-    var messageTime = moment().startOf('isoWeek').add(12, 'h');
+  getMillisecondsToTheNextMondayNoon() {
+    const now = moment.utc();
+    const messageTime = moment.utc().subtract(12, 'h').add(7, 'day').startOf('isoWeek').add(12, 'h');
     return messageTime.valueOf() - now.valueOf();
   }
 
   async sendStatistics() {
-    const dateFrom = moment().subtract(7, 'day').startOf('day');
-    const dateTill = moment().subtract(1, 'day').startOf('day');
+    const dateFrom = moment.utc().subtract(7, 'day').startOf('day');
+    const dateTill = moment.utc().subtract(1, 'day').startOf('day');
 
-    const playtimes = await this.models.Player.findAll({
+    const playtimes = await this.models.NewPlaytime.findAll({
       raw: true,
       attributes: [
         'clanTag',
         [Sequelize.fn('SUM', Sequelize.col('minutesSeeded')), 'totalMinutesSeeded'],
         [Sequelize.fn('SUM', Sequelize.col('minutesPlayed')), 'totalMinutesPlayed'],
       ],
-      include: {
-        model: this.models.Playtime,
-        as: 'Playtimes',
-        required: false,
-        attributes: [],
-        where: {
-          date: {
-            [Op.between]: [dateFrom, dateTill]
-          }
+      where: {
+        date: {
+          [Op.between]: [dateFrom, dateTill]
         }
       },
-      group:['clanTag']
+      group: ['clanTag']
+    });
+
+    const curentClans = [...new Set(Object.values(this.whitelistClansBySteamId))];
+
+    curentClans.forEach(clanTag => {
+      if (!playtimes.some(playtime => playtime.clanTag === clanTag)) {
+        playtimes.push({ clanTag });
+      }
     });
 
     await this.sendDiscordMessage({
@@ -297,7 +248,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
           },
           {
             name: 'Till',
-            value: dateFrom.format('YYYY-MM-DD'),
+            value: dateTill.format('YYYY-MM-DD'),
             inline: true
           }
         ]
@@ -305,14 +256,29 @@ export default class PlayerTracker extends DiscordBasePlugin {
     });
   }
 
+  /**
+   * @param {any[]} data
+   */
   formatTable(data) {
-    let table = 'Clan       Seeded   Played\n';
+    data.sort((a, b) => a.clanTag.localeCompare(b.clanTag));
+
+    let table = 'Clan       Played   Seeded   Ratio\n----------------------------------\n';
 
     data.forEach(item => {
-      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(item.totalMinutesSeeded ?? 0).padStart(6)}   ${String(item.totalMinutesPlayed ?? 0).padStart(6)}\n`;
+      const seeded = item.totalMinutesSeeded ?? 0;
+      const played = item.totalMinutesPlayed ?? 0;
+      const ratio = played / seeded;
+
+      let ratioString = ratio.toFixed(1);
+      if (ratio >= 1000) {
+        ratioString = '999.9';
+      } else if (isNaN(ratio)) {
+        ratioString = '-';
+      }
+
+      table += `${String(item.clanTag ?? 'N/A').padEnd(10)} ${String(played).padStart(6)}   ${String(seeded).padStart(6)}   ${String(ratioString).padStart(5)}\n`;
     });
 
     return table;
   }
-
 }
