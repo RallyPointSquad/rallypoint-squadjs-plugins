@@ -69,7 +69,7 @@ describe('player-tracker.js', () => {
     await plugin.prepareToMount();
     await plugin.mount();
 
-    const newPlaytimes = await plugin.models.NewPlaytime.bulkCreate({
+    const playtimes = await plugin.models.Playtime.bulkCreate({
       steamID: "1",
       date: (new Date).toISOString().substring(0, 10),
       minutesPlayed: 10,
@@ -82,7 +82,7 @@ describe('player-tracker.js', () => {
     await plugin.prepareToMount();
     await plugin.mount();
 
-    expect(await plugin.models.NewPlaytime.findAll()).toEqual(newPlaytimes);
+    expect(await plugin.models.Playtime.findAll()).toEqual(playtimes);
   });
 
   it.for([
@@ -119,7 +119,7 @@ describe('player-tracker.js', () => {
     const sevenDaysInPast = moment.utc().subtract(7, 'day');
     const eightDaysInPast = moment.utc().subtract(8, 'day');
 
-    await plugin.models.NewPlaytime.bulkCreate([
+    await plugin.models.Playtime.bulkCreate([
       { steamID: '1', date: oneDayInPast, minutesPlayed: 1, minutesSeeded: 1, clanTag: 'C' },
       { steamID: '2', date: eightDaysInPast, minutesPlayed: 100, minutesSeeded: 100, clanTag: 'A' },
       { steamID: '2', date: sevenDaysInPast, minutesPlayed: 1, minutesSeeded: 2, clanTag: 'A' },
@@ -179,7 +179,7 @@ D               1        1     1.0
     await plugin.mount();
 
     if (playtime) {
-      await plugin.models.NewPlaytime.create({
+      await plugin.models.Playtime.create({
         steamID: "1",
         date: moment.utc().subtract(1, 'day'),
         ...playtime,
@@ -222,9 +222,9 @@ D               1        1     1.0
     await plugin.updatePlaytime();
     await plugin.updatePlaytime();
 
-    const newPlaytimes = await plugin.models.NewPlaytime.findAll({ raw: true });
+    const playtimes = await plugin.models.Playtime.findAll({ raw: true });
 
-    expect(newPlaytimes).toEqual([
+    expect(playtimes).toEqual([
       { steamID: '1', date: (new Date).toISOString().substring(0, 10), minutesPlayed: expectedPlayedTime * 2, minutesSeeded: expectedSeededTime * 2, clanTag: 'A' },
       { steamID: '2', date: (new Date).toISOString().substring(0, 10), minutesPlayed: expectedPlayedTime * 2, minutesSeeded: expectedSeededTime * 2, clanTag: null }
     ]);

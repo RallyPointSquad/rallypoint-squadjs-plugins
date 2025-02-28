@@ -83,7 +83,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     this.models = {};
 
     this.createModel(
-      'NewPlaytime',
+      'Playtime',
       {
         steamID: {
           type: DataTypes.STRING,
@@ -125,7 +125,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
   async prepareToMount() {
     await super.prepareToMount();
 
-    await this.models.NewPlaytime.sync();
+    await this.models.Playtime.sync();
   }
 
   async mount() {
@@ -181,7 +181,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
         continue;
       }
 
-      const [playtime] = await this.models.NewPlaytime.findOrCreate({
+      const [playtime] = await this.models.Playtime.findOrCreate({
         where: {
           date: date,
           steamID: steamId
@@ -213,7 +213,7 @@ export default class PlayerTracker extends DiscordBasePlugin {
     const dateFrom = moment.utc().subtract(7, 'day').startOf('day');
     const dateTill = moment.utc().subtract(1, 'day').startOf('day');
 
-    const playtimes = await this.models.NewPlaytime.findAll({
+    const playtimes = await this.models.Playtime.findAll({
       raw: true,
       attributes: [
         'clanTag',
