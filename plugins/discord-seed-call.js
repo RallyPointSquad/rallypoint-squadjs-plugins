@@ -29,26 +29,26 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
         required: true,
         description: 'The ID of the channel to send the seeding message to.',
         default: '',
-        example: '667741905228136459'
+        example: '667741905228136459',
       },
       time: {
         required: true,
         description: 'Time of the day (UTC, hh:mm) at which the message will be send.',
         default: '',
-        example: '15:00'
+        example: '15:00',
       },
       message: {
         required: true,
         description: 'The message being sent.',
         default: '',
-        example: 'Seeding has started.'
+        example: 'Seeding has started.',
       },
       pingGroups: {
         required: false,
         description: 'A list of Discord role IDs to ping.',
         default: [],
-        example: ['500455137626554379']
-      }
+        example: ['500455137626554379'],
+      },
     }
   }
 
@@ -116,8 +116,8 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
       var message = await this.channel.send({
         'content': content,
         allowedMentions: {
-          parse: ['roles']
-        }
+          parse: ['roles'],
+        },
       });
 
       this.verbose(1, `Sent message '${message.content}'`);

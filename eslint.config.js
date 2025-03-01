@@ -17,6 +17,7 @@ export default [
   {
     rules: {
       'brace-style': 'error',
+      'comma-dangle': ['error', 'always-multiline'],
       curly: 'error',
       indent: [
         'error',

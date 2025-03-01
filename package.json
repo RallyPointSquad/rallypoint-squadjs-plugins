@@ -16,7 +16,7 @@
     "eslint": "^9.20.0",
     "globals": "^15.14.0",
     "msw": "^2.7.1",
-    "typescript": "^5.7.3",
+    "typescript": "^5.8.2",
     "vitest": "^3.0.6"
   },
   "peerDependencies": {

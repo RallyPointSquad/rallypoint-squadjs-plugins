@@ -52,17 +52,20 @@ export default class WhitelisterConnector extends BasePlugin {
   }
 
   /**
-   * @returns {Promise<{steamID: string, groupName: string, listName: string}[]>}
+   * @returns {Promise<{ steamID: string, groupName: string, listName: string }[]>}
    */
   async getWhitelistPlayers() {
     return this.#parseWhitelist(await this.#fetchWhitelist());
   }
 
+  /**
+   * @returns {Promise<Record<string, { steamID: string }[]>>}
+   */
   async getWhitelistClans() {
-    const players = (await this.getWhitelistPlayers())
+    const clanPlayers = (await this.getWhitelistPlayers())
       .filter(player => player.groupName === this.options.whitelistGroup)
       .filter(player => player.listName !== 'Discord Role');
-    return Object.groupBy(players, player => player.listName);
+    return Object.groupBy(clanPlayers, player => player.listName);
   }
 
   async #fetchWhitelist() {

@@ -50,23 +50,45 @@ Example configuration:
 ```
 
 
-### Player Tracker
+### Playtime Tracker
 
 This plugin tracks the number of minutes players spend on the server. The plugin uses server population to
-differentiate between seeding and normal play. Statistics with the cumulative time per clan are sent every Monday in Discord.
+differentiate between seeding and normal play.
+
+Tracked playtime can be associated with a specific clan based on clan membership extracted from a whitelist
+published by Whitelister.
 
 Example configuration:
 
 ```json
 {
-    "plugin": "PlayerTracker",
+    "plugin": "PlaytimeTracker",
     "enabled": true,
-    "discordClient": "discord",
-    "channelID": "1340314500031450080",
     "database": "sqlite",
-    "whitelisterApiUrl": "https://www.whitelister.com",
-    "whitelisterApiKey": "tqvUguPec0NzXP3vo3zV9RfCXMZFMpEnu7snBqWm4ckSUltqxSKa6tyEO",
-    "whitelisterApiPlayerListId": "7e4bebc07fc41"
+    "seedingStartsAt": 4,
+    "seedingEndsAt": 60,
+    "whitelisterClient": "whitelister"
+}
+```
+
+
+## Playtime Report
+
+This plugin can send cumulative clan players' playtime report to Discord.
+
+Plugin uses data collected by _Playtime Tracker_ plugin. Report is generated and sent in response to
+`SEND_PLAYTIME_REPORT` event that can be triggered by _Task Scheduler_ plugin.
+
+Example configuration:
+
+```json
+{
+    "plugin": "PlaytimeReport",
+    "enabled": true,
+    "database": "sqlite",
+    "discordClient": "discord",
+    "whitekisterClient": "whitelister",
+    "channelID": "1340314500031450080"
 }
 ```
 
@@ -89,7 +111,7 @@ Example configuration:
         {
             "name": "Emit custom event every hour",
             "cron": "0 * * * *",
-            "event": "MY_CUSTOM_EVENT",
+            "event": "MY_CUSTOM_EVENT"
         }
     ]
 }
@@ -105,5 +127,7 @@ Connector plugin that enabled other plugins to communicate with Whitelister.
     "plugin": "WhitelisterConnector",
     "enabled": true,
     "whitelisterUrl": "http://whitelister.local",
+    "whitelistPath": "wl",
+    "whitelistGroup": "whitelist"
 }
 ```
