@@ -94,3 +94,16 @@ Example configuration:
     ]
 }
 ```
+
+
+### Whitelister Connector
+
+Connector plugin that enabled other plugins to communicate with Whitelister.
+
+```json
+{
+    "plugin": "WhitelisterConnector",
+    "enabled": true,
+    "whitelisterUrl": "http://whitelister.local",
+}
+```

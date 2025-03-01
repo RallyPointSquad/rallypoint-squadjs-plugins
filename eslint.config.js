@@ -20,7 +20,7 @@ export default [
       curly: 'error',
       indent: [
         'error',
-        2
+        2,
       ],
       'no-multi-spaces': 'error',
       'no-unneeded-ternary': 'error',
