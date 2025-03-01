@@ -136,7 +136,7 @@ describe('player-tracker.js', () => {
         description: `\`\`\`
 Clan       Played   Seeded   Ratio
 ----------------------------------
-A               6       12     0.5
+A               6       12     2.0
 B               0        0       -
 C               1        1     1.0
 D               1        1     1.0
@@ -165,11 +165,10 @@ D               1        1     1.0
   it.each([
     [{ minutesPlayed: 1, minutesSeeded: 1 }, 'A               1        1     1.0'],
     [{ minutesPlayed: 0, minutesSeeded: 0 }, 'A               0        0       -'],
-    [{ minutesPlayed: 1, minutesSeeded: 0 }, 'A               1        0   999.9'],
-    [{ minutesPlayed: 0, minutesSeeded: 1 }, 'A               0        1     0.0'],
-    [{ minutesPlayed: 1, minutesSeeded: 1000 }, 'A               1     1000     0.0'],
-    [{ minutesPlayed: 1000, minutesSeeded: 1 }, 'A            1000        1   999.9'],
-    //[null, 'A               0        0       -'],
+    [{ minutesPlayed: 1, minutesSeeded: 0 }, 'A               1        0     0.0'],
+    [{ minutesPlayed: 0, minutesSeeded: 1 }, 'A               0        1   999.9'],
+    [{ minutesPlayed: 1, minutesSeeded: 1000 }, 'A               1     1000   999.9'],
+    [{ minutesPlayed: 1000, minutesSeeded: 1 }, 'A            1000        1     0.0']
   ])('Formats $minutesPlayed played and $minutesSeeded seeded minutes in the message', async (playtime, expectedMessagePart) => {
     const plugin = createPlugin();
 

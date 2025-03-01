@@ -265,9 +265,9 @@ export default class PlayerTracker extends DiscordBasePlugin {
     let table = 'Clan       Played   Seeded   Ratio\n----------------------------------\n';
 
     data.forEach(item => {
-      const seeded = item.totalMinutesSeeded ?? 0;
       const played = item.totalMinutesPlayed ?? 0;
-      const ratio = played / seeded;
+      const seeded = item.totalMinutesSeeded ?? 0;
+      const ratio = seeded / played;
 
       let ratioString = ratio.toFixed(1);
       if (ratio >= 1000) {
