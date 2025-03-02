@@ -131,3 +131,28 @@ Connector plugin that enabled other plugins to communicate with Whitelister.
     "whitelistGroup": "whitelist"
 }
 ```
+
+
+## Plugin Development
+
+Working with the project requires Node.js 21 or newer. Initialize project dependencies by running `npm install`.
+
+All common development tasks are available as NPM scripts:
+
+* `npm run clean` - removes compiled JavaScript files
+* `npm run build` - compiles TypeScript sources into JavaScript (output in `dist` directory)
+* `npm run test` - runs Vitest to execute unit tests
+* `npm run lint` - runs ESLint to check for linting errors
+* `npm run check` - runs TypeScript type checking
+
+To build only a specific set of plugins, use `BUILD_PLUGINS` environment variable (multiple plugin names separated by comma):
+
+```bash
+BUILD_PLUGINS=PlaytimeTracker npm run build
+```
+
+To run unit test for only a specific plugin, use the test filename as CLI argument:
+
+```bash
+npm run test ./tests/plugin/PlaytimeTracker.spec.ts
+```

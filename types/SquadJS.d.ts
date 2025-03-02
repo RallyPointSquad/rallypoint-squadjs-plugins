@@ -14,7 +14,7 @@ export class SquadRcon extends Rcon {
 
 // https://github.com/Team-Silver-Sphere/SquadJS/blob/master/squad-server/layers/layer.js
 export class Layer {
-  
+
   name: string;
   classname: string;
   layerid: string;
@@ -54,7 +54,7 @@ export class SquadServer extends EventEmitter {
   //~ Direct instance properties
 
   id: string;
-  options: Record<string, any>;
+  options: Record<string, unknown>;
   layerHistory: unknown[];
   players: Player[];
   squads: unknown[];

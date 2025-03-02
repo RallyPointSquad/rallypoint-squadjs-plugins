@@ -1,4 +1,4 @@
-name: Check code style
+name: CI
 on:
   - push
   - pull_request
@@ -13,6 +13,7 @@ jobs:
         with:
           node-version: 21
       - run: npm ci
-      - run: npm run test
       - run: npm run lint
+      - run: npm run build
+      - run: npm run test
       - run: npm run check

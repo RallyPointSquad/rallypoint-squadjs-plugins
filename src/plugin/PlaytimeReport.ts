@@ -1,27 +1,24 @@
+import { createPlaytimeModel } from '@/plugin/PlaytimeTracker.js';
+import WhitelisterConnector from '@/plugin/WhitelisterConnector.js';
+import DiscordBasePlugin from '@squadjs/plugins/discord-base-plugin.js';
 import moment from 'moment';
-import DiscordBasePlugin from './discord-base-plugin.js';
-import { createPlaytimeModel } from './rp-playtime-tracker.js';
 import { Op, Sequelize } from 'sequelize';
 
-/**
- * @typedef {import('./rp-whitelister-connector.js').default} WhitelisterConnector
- */
-
-/**
- * @param {string[]} header
- * @param {string[][]} data
- * @param {('left'|'right')[]} align
- */
-export function formatTable(header, data, align = [], divider = '   ') {
-  let columnLengths = data.reduce(
+export function formatTable(
+  header: string[],
+  data: string[][],
+  align: ('left'|'right')[] = [],
+  divider = '   ',
+) {
+  const columnLengths = data.reduce(
     (acc, values) => values.map((it, idx) => Math.max(acc[idx], it.length)),
     header.map(it => it.length),
   );
-  let totalLength = columnLengths.reduce(
+  const totalLength = columnLengths.reduce(
     (acc, it) => acc + it + divider.length, 0,
   ) - divider.length;
 
-  const formatCell = (value, length, align) => {
+  const formatCell = (value, length, align = 'left') => {
     return align === 'right' ? value.padStart(length) : value.padEnd(length);
   };
 
@@ -37,16 +34,19 @@ export function formatTable(header, data, align = [], divider = '   ') {
   ].concat(data.map(formatLine)).join('\n');
 }
 
-/**
- * @typedef {Object} ExtraPluginOptions
- * @property {import('sequelize').Sequelize} database
- * @property {WhitelisterConnector} whitelisterClient
- */
+interface ExtraPluginOptions {
+  database: Sequelize;
+  whitelisterClient: WhitelisterConnector;
+}
 
 /**
- * @extends {DiscordBasePlugin<ExtraPluginOptions>}
+ * Plugin generating clan playtime and seeding effort.
+ *
+ * Plugin uses data tracked by <i>PlaytimeTracker</i> plugin to generate cumulative clan-based report.
+ * The report is sent to a Discord channel (specified in the configuration) when the <code>SEND_PLAYTIME_REPORT</code>
+ * event is triggered. Use <i>TaskScheduler</i> plugin to schedule this event.
  */
-export default class PlaytimeReport extends DiscordBasePlugin {
+export default class PlaytimeReport extends DiscordBasePlugin<ExtraPluginOptions> {
 
   static get description() {
     return 'The <code>PlaytimeReport</code> uses data collected by <code>PlaytimeTracker</code> plugin and generates cumulative clan-based report.'
@@ -78,6 +78,8 @@ export default class PlaytimeReport extends DiscordBasePlugin {
       },
     };
   }
+
+  playtimeModel: ReturnType<typeof createPlaytimeModel>;
 
   constructor(server, options, connectors) {
     super(server, options, connectors);
