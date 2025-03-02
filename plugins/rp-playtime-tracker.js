@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 import BasePlugin from './base-plugin.js';
 
 /**
- * @typedef {import('./whitelister-connector.js').default} WhitelisterConnector
+ * @typedef {import('./rp-whitelister-connector.js').default} WhitelisterConnector
  */
 
 const { DataTypes } = Sequelize;

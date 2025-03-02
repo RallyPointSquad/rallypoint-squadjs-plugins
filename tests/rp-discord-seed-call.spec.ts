@@ -1,9 +1,9 @@
 import { Message } from 'discord.js';
-import DiscordSeedCall from '../plugins/discord-seed-call.js';
+import DiscordSeedCall from '../plugins/rp-discord-seed-call.js';
 import { SquadServer } from '../types/SquadJS.js';
 import { mockDiscordClient } from './support.js';
 
-describe('discord-seed-call.js', () => {
+describe('rp-discord-seed-call.js', () => {
 
   const squadServer: Partial<SquadServer> = {
     playerCount: 0,

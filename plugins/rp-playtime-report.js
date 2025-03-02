@@ -1,10 +1,10 @@
 import moment from 'moment';
 import DiscordBasePlugin from './discord-base-plugin.js';
-import { createPlaytimeModel } from './playtime-tracker.js';
+import { createPlaytimeModel } from './rp-playtime-tracker.js';
 import { Op, Sequelize } from 'sequelize';
 
 /**
- * @typedef {import('./whitelister-connector.js').default} WhitelisterConnector
+ * @typedef {import('./rp-whitelister-connector.js').default} WhitelisterConnector
  */
 
 /**

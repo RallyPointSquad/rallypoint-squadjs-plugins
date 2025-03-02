@@ -1,8 +1,8 @@
 import { Mock } from 'vitest';
-import TaskScheduler from '../plugins/task-scheduler.js';
+import TaskScheduler from '../plugins/rp-task-scheduler.js';
 import { SquadServer } from '../types/SquadJS.js';
 
-describe('task-scheduler.js', () => {
+describe('rp-task-scheduler.js', () => {
 
   const squadServer: Partial<SquadServer> = {
     emit: vi.fn(),

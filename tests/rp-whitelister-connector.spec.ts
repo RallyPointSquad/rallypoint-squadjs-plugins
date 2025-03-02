@@ -1,13 +1,13 @@
-import PlaytimeTracker from '../plugins/playtime-tracker.js';
+import PlaytimeTracker from '../plugins/rp-playtime-tracker.js';
 import { SquadServer } from '../types/SquadJS.js';
 import { mockDiscordClient } from './support.js';
 import { Sequelize } from 'sequelize';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import moment from 'moment';
-import WhitelisterConnector from '../plugins/whitelister-connector.js';
+import WhitelisterConnector from '../plugins/rp-whitelister-connector.js';
 
-describe('whitelister-connector.js', () => {
+describe('rp-whitelister-connector.js', () => {
 
   function createPlugin(connectors = {}) {
     return new WhitelisterConnector(null, {

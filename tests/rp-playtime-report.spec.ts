@@ -1,10 +1,10 @@
 import { mockDiscordClient, mockSquadServer } from './support.js';
 import { Sequelize } from 'sequelize';
 import moment from 'moment';
-import WhitelisterConnector from '../plugins/whitelister-connector.js';
-import PlaytimeReport, { formatTable } from '../plugins/playtime-report.js';
+import WhitelisterConnector from '../plugins/rp-whitelister-connector.js';
+import PlaytimeReport, { formatTable } from '../plugins/rp-playtime-report.js';
 
-describe('playtime-tracker.js', () => {
+describe('rp-playtime-tracker.js', () => {
 
   const squadServer = mockSquadServer({
     get playerCount() {
