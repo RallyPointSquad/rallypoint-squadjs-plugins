@@ -1,12 +1,12 @@
 import { join } from 'node:path';
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   resolve: {
     alias: {
+      '@': join(import.meta.dirname, 'src/'),
+      '@squadjs/plugins': join(import.meta.dirname, 'SquadJS/squad-server/plugins/'),
       'core': join(import.meta.dirname, 'SquadJS/core/'),
-      './base-plugin.js': join(import.meta.dirname, 'SquadJS/squad-server/plugins/base-plugin.js'),
-      './discord-base-plugin.js': join(import.meta.dirname, 'SquadJS/squad-server/plugins/discord-base-plugin.js'),
     },
   },
   test: {
