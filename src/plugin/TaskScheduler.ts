@@ -1,25 +1,22 @@
 import cron from 'node-cron';
 
-import BasePlugin from './base-plugin.js';
+import BasePlugin from '@squadjs/plugins/base-plugin.js';
 
-/**
- * @typedef {Object} TaskConfiguration
- * @property {string} name
- * @property {string} cron
- * @property {string} event
- */
+interface TaskConfiguration {
+  name: string;
+  cron: string;
+  event: string;
+}
 
-/**
- * @typedef {Object} ScheduledTask
- * @property {string} name
- * @property {import('node-cron').ScheduledTask} task
- */
+interface ScheduledTask {
+  name: string;
+  task: cron.ScheduledTask;
+}
 
-/**
- * @typedef {Object} ExtraPluginOptions
- * @property {TaskConfiguration[]} tasks
- * @property {string} timezone
- */
+interface ExtraPluginOptions {
+  tasks: TaskConfiguration[];
+  timezone: string;
+}
 
 /**
  * Generic task scheduler plugin that emits configured events for other plugins based on CRON expressions.
@@ -27,10 +24,8 @@ import BasePlugin from './base-plugin.js';
  *
  * Requirements:
  * - Plugin expects node-cron dependency to be installed.
- *
- * @extends {BasePlugin<ExtraPluginOptions>}
  */
-export default class TaskScheduler extends BasePlugin {
+export default class TaskScheduler extends BasePlugin<ExtraPluginOptions> {
 
   static get description() {
     return 'Schedule event-based tasks using CRON expressions .';
@@ -67,11 +62,10 @@ export default class TaskScheduler extends BasePlugin {
     };
   }
 
+  #scheduled: ScheduledTask[] = [];
+
   constructor(server, options, connectors) {
     super(server, options, connectors);
-
-    /** @type {ScheduledTask[]} */
-    this.scheduled = [];
   }
 
   async mount() {
@@ -86,20 +80,20 @@ export default class TaskScheduler extends BasePlugin {
       }
     }
 
-    this.verbose(1, `Plugin mounted - ${this.scheduled.length} tasks scheduled.`);
+    this.verbose(1, `Plugin mounted - ${this.#scheduled.length} tasks scheduled.`);
   }
 
   async unmount() {
-    for (const { name, task } of this.scheduled) {
+    for (const { name, task } of this.#scheduled) {
       this.verbose(1, `Stopping scheduled task: ${name}`);
       task.stop();
     }
 
-    this.scheduled = [];
+    this.#scheduled = [];
     this.verbose(1, 'All scheduled tasks stopped.');
   }
 
-  scheduleTask(/** @type {TaskConfiguration} */ config) {
+  scheduleTask(config: TaskConfiguration) {
     if (!config.name || !config.cron || !config.event) {
       this.verbose(1, `Invalid task configuration: ${JSON.stringify(config)}`);
       return;
@@ -114,10 +108,10 @@ export default class TaskScheduler extends BasePlugin {
       scheduled: true,
       timezone: this.options.timezone || 'UTC',
     });
-    this.scheduled.push({ name: config.name, task });
+    this.#scheduled.push({ name: config.name, task });
   }
 
-  triggerEvent(/** @type {TaskConfiguration} */ config) {
+  triggerEvent(config: TaskConfiguration) {
     try {
       this.verbose(1, `Triggering event "${config.event}" from task "${config.name}".`);
       this.server.emit(config.event);

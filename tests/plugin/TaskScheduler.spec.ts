@@ -1,8 +1,8 @@
 import { Mock } from 'vitest';
-import TaskScheduler from '../plugins/rp-task-scheduler.js';
-import { SquadServer } from '../types/SquadJS.js';
+import { SquadServer } from '../../types/SquadJS.js';
+import TaskScheduler from '@/plugin/TaskScheduler.js';
 
-describe('rp-task-scheduler.js', () => {
+describe('TaskScheduler.js', () => {
 
   const squadServer: Partial<SquadServer> = {
     emit: vi.fn(),
@@ -28,7 +28,7 @@ describe('rp-task-scheduler.js', () => {
           event: 'hello',
         },
       ],
-    });
+    }, {});
 
     await plugin.mount();
 
