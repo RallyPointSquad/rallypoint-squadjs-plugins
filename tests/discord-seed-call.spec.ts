@@ -16,7 +16,7 @@ describe('discord-seed-call.js', () => {
 
   function createPlugin() {
     return new DiscordSeedCall(squadServer, {
-      'discordClient': 'discord',
+      discordClient: 'discord',
       channelID: '123456',
       time: '12:00',
       message: 'HELLO WORLD'
@@ -47,6 +47,9 @@ describe('discord-seed-call.js', () => {
 
     await plugin.prepareToMount();
     await plugin.mount();
+
+    vi.clearAllTimers();
+    await plugin.sendMessage();
 
     await vi.advanceTimersByTimeAsync(12 * 60 * 60 * 1000);
     expect(vi.getTimerCount()).toBe(0);

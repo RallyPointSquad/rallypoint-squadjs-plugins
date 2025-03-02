@@ -2,6 +2,8 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
+    // dom needed due to msw :(
+    "lib": ["dom", "ES2024"],
     "module": "Node16",
     "moduleResolution": "Node16",
     "noEmit": true,

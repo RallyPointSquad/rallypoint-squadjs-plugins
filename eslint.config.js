@@ -17,10 +17,11 @@ export default [
   {
     rules: {
       'brace-style': 'error',
+      'comma-dangle': ['error', 'always-multiline'],
       curly: 'error',
       indent: [
         'error',
-        2
+        2,
       ],
       'no-multi-spaces': 'error',
       'no-unneeded-ternary': 'error',

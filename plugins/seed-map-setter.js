@@ -24,13 +24,13 @@ export default class SeedMapSetter extends BasePlugin {
       seedingLayers: {
         required: false,
         description: 'Seeding layers from which one will be set randomly with <AdminChangeLayer> command.',
-        default: []
+        default: [],
       },
       afterSeedingLayers: {
         required: false,
         description: 'Layers from which one will be set randomly with <AdminSetNextLayer> command.',
-        default: []
-      }
+        default: [],
+      },
     };
   }
 

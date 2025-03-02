@@ -1,4 +1,6 @@
 import { ChannelManager, Client, TextChannel } from "discord.js";
+import { SquadServer } from '../types/SquadJS.js';
+import { EventEmitter } from 'node:events';
 
 export type DiscordClientMock = Partial<
   Omit<Client, 'channels'> & { channels: Pick<ChannelManager, 'fetch'> }
@@ -19,4 +21,8 @@ export function mockDiscordClient() {
     discordChannel,
     discordClient
   };
+}
+
+export function mockSquadServer(extension: Partial<SquadServer> = {}) {
+  return Object.assign(new EventEmitter(), extension) as SquadServer;
 }
