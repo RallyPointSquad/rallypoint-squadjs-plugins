@@ -1,18 +1,12 @@
+import BasePlugin from '@squadjs/plugins/base-plugin.js';
 import moment from 'moment';
-import Sequelize from 'sequelize';
-import BasePlugin from './base-plugin.js';
-
-/**
- * @typedef {import('./rp-whitelister-connector.js').default} WhitelisterConnector
- */
-
-const { DataTypes } = Sequelize;
+import { DataTypes, Sequelize } from 'sequelize';
+import WhitelisterConnector from './WhitelisterConnector.js';
 
 /**
  * Create playtime model that can be shared with other plugins.
- * @param {import('sequelize').Sequelize} database
  */
-export function createPlaytimeModel(database) {
+export function createPlaytimeModel(database: Sequelize) {
   return database.define(
     'PlaytimeTracker_Playtime',
     {
@@ -49,18 +43,14 @@ export function createPlaytimeModel(database) {
  */
 export const TRACKING_INTERVAL = 60_000;
 
-/**
- * @typedef {Object} ExtraPluginOptions
- * @property {import('sequelize').Sequelize} database
- * @property {WhitelisterConnector} whitelisterClient
- * @property {number} seedingStartsAt
- * @property {number} seedingEndsAt
- */
+interface ExtraPluginOptions {
+  database: Sequelize;
+  whitelisterClient: WhitelisterConnector;
+  seedingStartsAt: number;
+  seedingEndsAt: number;
+}
 
-/**
- * @extends {BasePlugin<ExtraPluginOptions>}
- */
-export default class PlaytimeTracker extends BasePlugin {
+export default class PlaytimeTracker extends BasePlugin<ExtraPluginOptions> {
 
   static get description() {
     return 'The <code>PlaytimeTracker</code> plugin tracks hours played by players with their clan membership based on data from Whitelister.';
@@ -98,13 +88,17 @@ export default class PlaytimeTracker extends BasePlugin {
     }
   }
 
+  playtimeModel: ReturnType<typeof createPlaytimeModel>;
+
+  #whitelistPlayers: Record<string, string> = {};
+
+  #trackingInterval: NodeJS.Timeout;
+
   constructor(server, options, connectors) {
     super(server, options, connectors);
     this.options.whitelisterClient = connectors[options.whitelisterClient];
 
     this.playtimeModel = createPlaytimeModel(this.options.database);
-    /** @type {Record<string, string>} */
-    this.whitelistPlayers = {};
 
     this.updatePlaytime = this.updatePlaytime.bind(this);
   }
@@ -117,39 +111,37 @@ export default class PlaytimeTracker extends BasePlugin {
 
   async mount() {
     const whitelistClans = await this.options.whitelisterClient.getWhitelistClans();
-    this.whitelistPlayers = Object.fromEntries(
+    this.#whitelistPlayers = Object.fromEntries(
       Object.entries(whitelistClans).map(
         ([clanTag, members]) => members.map(({ steamID }) => [steamID, clanTag]),
       ).flat(),
     );
 
-    this.trackingInterval = setInterval(this.updatePlaytime, TRACKING_INTERVAL);
+    this.#trackingInterval = setInterval(this.updatePlaytime, TRACKING_INTERVAL);
   }
 
   async unmount() {
-    clearInterval(this.trackingInterval);
+    clearInterval(this.#trackingInterval);
   }
 
   async updatePlaytime() {
     const date = moment.utc().startOf('day');
     const playerCount = this.server.playerCount;
 
-    for (let index in this.server.players) {
-      const steamId = this.server.players[index]?.steamID;
-
-      if (!steamId) {
+    for (const player of this.server.players) {
+      if (!player?.steamID) {
         continue;
       }
 
       const [playtime] = await this.playtimeModel.findOrCreate({
         where: {
           date: date,
-          steamID: steamId,
+          steamID: player.steamID,
         },
         defaults: {
           minutesPlayed: 0,
           minutesSeeded: 0,
-          clanTag: this.whitelistPlayers[steamId],
+          clanTag: this.#whitelistPlayers[player.steamID],
         },
       });
 

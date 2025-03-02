@@ -3,21 +3,25 @@
     "allowJs": true,
     "checkJs": true,
     // dom needed due to msw :(
+    "esModuleInterop": true,
     "lib": ["dom", "ES2024"],
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "noEmit": true,
-    "rootDirs": [
-      "./plugins/",
-      "./types/plugins/",
-    ],
+    "paths": {
+      "@squadjs/plugins/*": ["./types/plugins/*"],
+      "@/*": ["./src/*"],
+    },
     "types": [
-      "vitest/globals"
+      "vitest/globals",
     ],
     "target": "ES2022",
   },
   "exclude": [
-    "./SquadJS/",
+    "./dist/",
     "./node_modules/",
+    // https://github.com/rollup/plugins/issues/1662
+    "./rollup.config.js",
+    "./SquadJS/",
   ],
 }

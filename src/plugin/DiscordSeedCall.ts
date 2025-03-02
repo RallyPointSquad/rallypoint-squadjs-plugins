@@ -1,18 +1,16 @@
+import DiscordBasePlugin from '@squadjs/plugins/discord-base-plugin.js';
 import moment from 'moment';
 
-import DiscordBasePlugin from './discord-base-plugin.js';
+interface ExtraPluginOptions {
+  time: string;
+  message: string;
+  pingGroups: string[];
+}
 
 /**
- * @typedef {Object} ExtraPluginOptions
- * @property {string} time
- * @property {string} message
- * @property {string[]} pingGroups
+ * Plugin that sends a seeding call message to a Discord channel at specified time of the day.
  */
-
-/**
- * @extends {DiscordBasePlugin<ExtraPluginOptions>}
- */
-export default class DiscordSeedCall extends DiscordBasePlugin {
+export default class DiscordSeedCall extends DiscordBasePlugin<ExtraPluginOptions> {
 
   static get description() {
     return 'The <code>DiscordSeedCall</code> plugin will send a message in a Discord channel at specified time of the day.';
@@ -52,6 +50,8 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
     }
   }
 
+  #timeout: NodeJS.Timeout;
+
   constructor(server, options, connectors) {
     super(server, options, connectors);
 
@@ -59,7 +59,7 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
   }
 
   async mount() {
-    var timeoutValue = this.getTimeoutValue();
+    const timeoutValue = this.getTimeoutValue();
 
     if (timeoutValue === undefined) {
       this.verbose(1, 'Wrong timeout, won\'t send a message');
@@ -68,18 +68,18 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
 
     this.verbose(1, `Message will be sent in ${timeoutValue} ms`);
 
-    this.timeout = setTimeout(this.sendMessage, timeoutValue);
+    this.#timeout = setTimeout(this.sendMessage, timeoutValue);
   }
 
   async unmount() {
-    clearTimeout(this.timeout);
+    clearTimeout(this.#timeout);
   }
 
   getTimeoutValue() {
-    var now = moment.utc();
-    var msgTime = moment(this.options.time, 'hh:mm');
+    const now = moment.utc();
+    const msgTime = moment(this.options.time, 'hh:mm');
 
-    var minutesDiff = this.getMinutesOfDay(msgTime) - this.getMinutesOfDay(now);
+    const minutesDiff = this.getMinutesOfDay(msgTime) - this.getMinutesOfDay(now);
 
     return minutesDiff > 0
       ? minutesDiff * 60 * 1000
@@ -106,14 +106,14 @@ export default class DiscordSeedCall extends DiscordBasePlugin {
       return;
     }
 
-    var content = this.options.message;
+    let content = this.options.message;
 
     if (this.options.pingGroups.length > 0) {
       content += '\n\n' + this.options.pingGroups.map((groupID) => `<@&${groupID}>`).join(' ');
     }
 
     try {
-      var message = await this.channel.send({
+      const message = await this.channel.send({
         'content': content,
         allowedMentions: {
           parse: ['roles'],

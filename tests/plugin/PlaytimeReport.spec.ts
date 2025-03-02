@@ -1,10 +1,10 @@
-import { mockDiscordClient, mockSquadServer } from './support.js';
-import { Sequelize } from 'sequelize';
+import WhitelisterConnector from '@/plugin/WhitelisterConnector.js';
 import moment from 'moment';
-import WhitelisterConnector from '../plugins/rp-whitelister-connector.js';
-import PlaytimeReport, { formatTable } from '../plugins/rp-playtime-report.js';
+import { Sequelize } from 'sequelize';
+import { mockDiscordClient, mockSquadServer } from '../support.js';
+import PlaytimeReport, { formatTable } from '@/plugin/PlaytimeReport.js';
 
-describe('rp-playtime-tracker.js', () => {
+describe('RlaytimeTracker', () => {
 
   const squadServer = mockSquadServer({
     get playerCount() {
@@ -15,12 +15,12 @@ describe('rp-playtime-tracker.js', () => {
 
   const {
     discordChannel,
-    discordClient
+    discordClient,
   } = mockDiscordClient();
 
   const whitelisterClient: Partial<WhitelisterConnector> = {
     getWhitelistClans: async () => ({
-      B: [{ steamID: '1' }],
+      B: [{ steamID: '1', groupName: 'w/e', listName: 'B' }],
     }),
   };
 
@@ -35,15 +35,15 @@ describe('rp-playtime-tracker.js', () => {
       sqlite: new Sequelize({
         dialect: 'sqlite',
         storage: ':memory:',
-        logging: false
+        logging: false,
       }),
-     whitelister: whitelisterClient,
+      whitelister: whitelisterClient,
     });
   };
 
   beforeEach(() => {
     vi.useFakeTimers({
-      toFake: ['Date']
+      toFake: ['Date'],
     });
     vi.setSystemTime(new Date(0));
   });
@@ -109,25 +109,25 @@ D           1        1     1.0
 \`\`\``,
         fields: [
           {
-            name: "From",
-            value: "1969-12-25",
-            inline: true
+            name: 'From',
+            value: '1969-12-25',
+            inline: true,
           },
           {
-            name: "Till",
-            value: "1969-12-31",
-            inline: true
+            name: 'Till',
+            value: '1969-12-31',
+            inline: true,
           }],
         footer: {
-          text: "Powered by SquadJS, Copyright © 2025"
-        }
-      }
+          text: expect.stringMatching(/Powered by SquadJS, Copyright © [0-9]{4}/),
+        },
+      },
     }
 
     expect(discordChannel.send).toHaveBeenCalledOnce();
     expect(discordChannel.send).toHaveBeenCalledWith({
       ...expectedMessage,
-      embeds: [expectedMessage.embed]
+      embeds: [expectedMessage.embed],
     });
   });
 
