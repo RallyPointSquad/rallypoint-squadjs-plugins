@@ -1,17 +1,16 @@
 import { Message } from 'discord.js';
-import DiscordSeedCall from '../plugins/rp-discord-seed-call.js';
-import { SquadServer } from '../types/SquadJS.js';
-import { mockDiscordClient } from './support.js';
+import DiscordSeedCall from '../../src/plugin/DiscordSeedCall.js';
+import { mockDiscordClient, mockSquadServer } from '../support.js';
 
-describe('rp-discord-seed-call.js', () => {
+describe('DiscordSeedCall', () => {
 
-  const squadServer: Partial<SquadServer> = {
+  const squadServer = mockSquadServer({
     playerCount: 0,
-  };
+  });
 
   const {
     discordChannel,
-    discordClient
+    discordClient,
   } = mockDiscordClient();
 
   function createPlugin() {
@@ -19,9 +18,9 @@ describe('rp-discord-seed-call.js', () => {
       discordClient: 'discord',
       channelID: '123456',
       time: '12:00',
-      message: 'HELLO WORLD'
+      message: 'HELLO WORLD',
     }, {
-      discord: discordClient
+      discord: discordClient,
     });
   }
 
@@ -40,7 +39,7 @@ describe('rp-discord-seed-call.js', () => {
 
     const message = {
       content: plugin.options.message,
-      crosspost: vi.fn()
+      crosspost: vi.fn(),
     } as unknown as Message<true>;
 
     vi.spyOn(discordChannel, 'send').mockImplementation(async () => message);

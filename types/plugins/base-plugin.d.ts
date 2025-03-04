@@ -4,15 +4,15 @@ export interface PluginOptionSpec {
   required: boolean;
   description: string;
   connector?: string;
-  default?: any;
-  example?: any;
+  default?: unknown;
+  example?: unknown;
 }
 
 export type PluginOptionsSpec = Record<string, PluginOptionSpec>;
 
-export type PluginOptions = Record<string, any>;
+export type PluginOptions = Record<string, unknown>;
 
-export default class BasePlugin<PluginOptions = {}> {
+export default class BasePlugin<PluginOptions = Record<string, never>> {
 
   static description: string;
 
@@ -32,6 +32,6 @@ export default class BasePlugin<PluginOptions = {}> {
 
   unmount(): Promise<void>;
 
-  verbose(...args: any[]): void;
+  verbose(...args: (string|number)[]): void;
 
 }
