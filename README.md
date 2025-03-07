@@ -72,7 +72,7 @@ Example configuration:
 ```
 
 
-## Playtime Report
+### Playtime Report
 
 This plugin can send cumulative clan players' playtime report to Discord.
 
@@ -107,6 +107,7 @@ Example configuration:
 ```json
 {
     "plugin": "TaskScheduler",
+    "enabled": true,
     "tasks": [
         {
             "name": "Emit custom event every hour",
@@ -122,6 +123,8 @@ Example configuration:
 
 Connector plugin that enabled other plugins to communicate with Whitelister.
 
+Example configuration:
+
 ```json
 {
     "plugin": "WhitelisterConnector",
@@ -129,6 +132,24 @@ Connector plugin that enabled other plugins to communicate with Whitelister.
     "whitelisterUrl": "http://whitelister.local",
     "whitelistPath": "wl",
     "whitelistGroup": "whitelist"
+}
+```
+
+
+### Monkey Patch
+
+Plugin that tweaks SquadJS behavior by monkey patching its internals.
+
+Applied patches by the plugin:
+
+* increase listener limit on RCON connection to prevent `MaxListenersExceededWarning`
+
+Example configuration:
+
+```json
+{
+    "plugin": "MonkeyPatch",
+    "enabled": true
 }
 ```
 

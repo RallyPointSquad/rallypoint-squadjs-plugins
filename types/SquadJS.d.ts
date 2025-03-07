@@ -1,8 +1,11 @@
 import EventEmitter from 'node:events';
+import { Socket } from 'node:net';
 
 
 // https://github.com/Team-Silver-Sphere/SquadJS/blob/master/core/rcon.js
 export class Rcon extends EventEmitter {
+
+  client: Socket;
 
   execute(command: string): Promise<unknown>;
 
@@ -67,5 +70,10 @@ export class SquadServer extends EventEmitter {
 
   playerCount?: number;
   currentLayer?: Layer;
+
+  //~ Server methods
+
+  setupRCON(): Promise<void>;
+  restartRCON(): Promise<void>;
 
 }
